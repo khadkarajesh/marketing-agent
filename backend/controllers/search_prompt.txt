@@ -1,0 +1,33 @@
+Вот готовый, чёткий и универсальный **англоязычный промпт**, который можно напрямую отправлять языковой модели:
+
+---
+
+### **Prompt (English)**
+
+You are given a description of a product.
+Your task is to analyze this product and generate **10 examples of realistic problems a user might experience**, written **from the user’s perspective**, assuming the user is **not aware that this product could solve their problem**.
+
+The problems should:
+
+* Be clear, natural, and relatable.
+* Reflect real-world pain points or frustrations.
+* Implicitly connect to the capabilities of the product, without mentioning the product itself.
+* Be written as short first-person statements (e.g., “I struggle with…” or “I can’t figure out how to…”).
+
+**Output format:**
+
+```
+User Problems:
+1. ...
+2. ...
+3. ...
+4. ...
+5. ...
+6. ...
+7. ...
+8. ...
+9. ...
+10. ...
+```
+
+**Input:** PRODUCT INFORMATION : 
