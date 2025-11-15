@@ -30,6 +30,7 @@ def proceed_client_search():
         ## Uploading client information to our database
         qdrant.create_collection(name = prod_name)
         for info in ques_answ:
+            project_desc += "\n" + info
             pt = qdrant.models.PointStruct(
                 id = qdrant.get_uuid,
                 payload= {"content":info},
@@ -45,7 +46,7 @@ def proceed_client_search():
         query = mistral.generate(prompt = prompt)
         query_emb = mistral.get_embedding(text = query)
         similar_problems = qdrant.search_vectors("problem_collection",vector = query_emb, limit=10)
-
+        
         ## 
 
         return jsonify(similar_problems)
