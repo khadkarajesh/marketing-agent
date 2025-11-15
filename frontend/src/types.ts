@@ -6,10 +6,10 @@ export interface ConversationTurn {
   timestamp?: number
 }
 
-export interface PdfImage {
+export interface PdfPageText {
   filename: string
   pageNumber: number
-  dataUrl: string
+  text: string
 }
 
 export interface ClientSearchPayload {
@@ -17,5 +17,5 @@ export interface ClientSearchPayload {
   conversationProblemHint?: string
   productName: string
   conversationSolutionHint?: string
-  pdfImages: PdfImage[]
+  pdfPages: PdfPageText[]
 }

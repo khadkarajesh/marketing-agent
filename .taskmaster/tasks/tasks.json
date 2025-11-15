@@ -319,14 +319,14 @@
       {
         "id": "5",
         "title": "Implement PDF upload and PDF→image conversion",
-        "description": "Allow multiple PDF uploads and convert each page to image Data URLs in the browser using PDF.js.",
-        "details": "- Add `pdfjs-dist` if not present; configure worker: `pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdf.worker.min.js', import.meta.url).toString()` or CDN per build.\n- File: `src/utils/pdf.ts` with `export async function pdfToImages(file: File): Promise<PdfImage[]>`:\n  - Read file to ArrayBuffer.\n  - `const pdf = await getDocument({ data: arrayBuffer }).promise`.\n  - Loop pages: `const page = await pdf.getPage(i)`; render to offscreen canvas at scale 1.5–2.0; `canvas.toDataURL('image/png')`.\n  - Return `PdfImage[]` including filename and pageNumber.\n- Component: `src/components/PdfUploadPanel.tsx`:\n  - Input (accept `.pdf`, multiple) and drag-and-drop zone.\n  - Show file list and per-file progress; handle errors.\n  - Aggregate results and expose `pdfImages` upward via props/callback.",
-        "testStrategy": "Upload 1–2 PDFs; verify image count == page count; throttle network off to ensure no backend calls occur; test corrupted PDF to see handled error state.",
-        "priority": "high",
+        "description": "Switch the PDF flow from per-page image rendering to per-page text extraction in the browser using pdfjs-dist. Allow multiple PDF uploads and emit PdfPageText[] upward. Configure the PDF.js worker and update integration to use text for Client Search. Preserve existing completed work; replace image-specific pieces with text equivalents via new pdfToPageText utility.",
+        "status": "done",
         "dependencies": [
           "2"
         ],
-        "status": "pending",
+        "priority": "high",
+        "details": "- Replace image conversion with text extraction using pdfjs-dist.\n- Utility: `src/utils/pdf.ts` should export `export async function pdfToPageText(file: File): Promise<PdfPageText[]>` and configure the PDF.js worker if not already configured.\n  - Implementation outline:\n    - Read file to ArrayBuffer: `const data = await file.arrayBuffer()`.\n    - `const pdf = await getDocument({ data }).promise`.\n    - Loop pages: `for (let i = 1; i <= pdf.numPages; i++) { const page = await pdf.getPage(i); const textContent = await page.getTextContent(); const text = textContent.items.map(it => ('str' in it ? it.str : '')).join(' '); /* apply simple line-break heuristics if needed */ }`.\n    - Return `PdfPageText[]` items `{ filename: file.name, pageNumber: i, text }`.\n    - Catch and rethrow with a user-friendly message for corrupted PDFs.\n- Worker config: Create `src/utils/pdfWorker.ts` to set `pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdf.worker.min.js', import.meta.url).toString()`. Import this once (e.g., in `src/main.tsx`) or guard-initialize within `pdf.ts` before first use so Vite resolves the worker.\n- Component: `src/components/PdfUploadPanel.tsx` supports multiple PDFs with drag-and-drop, shows status badges (queued, processing, done, error), and calls `onChange(pages: PdfPageText[])` as files are processed using `pdfToPageText`.\n- App-level integration: In `src/App.tsx`, maintain `const [pdfPages, setPdfPages] = useState<PdfPageText[]>([])`, render `<PdfUploadPanel onChange={setPdfPages} />`, and show a small snapshot/preview of the first page's text.\n- Client Search alignment: Update consumer flow so Client Search sends text, not images. Pass `pdfPages` into the payload builder instead of `pdfImages`.\n- Types: Add `PdfPageText` to `src/types.ts` if missing: `{ filename: string; pageNumber: number; text: string }`. Keep any existing `PdfImage` definition for backward compatibility but prefer `PdfPageText` in new code.",
+        "testStrategy": "- Unit: For a small valid PDF, assert `pdfToPageText` returns an array whose length equals `pdf.numPages` and pages with text have non-empty `text`. For a corrupted PDF, ensure a handled error is raised without crashing.\n- Integration: In `src/components/PdfUploadPanel.tsx`, upload 1–2 PDFs and verify total `PdfPageText` entries match combined page counts, and status badges progress from queued → processing → done or error.\n- App: In `src/App.tsx`, verify `pdfPages` state updates and a preview of the first page's text renders.\n- Client Search: Confirm payload builder uses `pdfPages` and no Data URLs are sent. Toggle offline mode to verify no network calls occur for PDF processing.",
         "subtasks": [
           {
             "id": 1,
@@ -389,7 +389,8 @@
         ],
         "complexity": 6,
         "recommendedSubtasks": 5,
-        "expansionPrompt": "Audit for existing PDF utils; ensure pdfjs-dist and worker configuration; implement pdfToImages rendering per page; build multi-file upload panel with progress and errors; integrate with parent state."
+        "expansionPrompt": "Audit for existing PDF utils; ensure pdfjs-dist and worker configuration; implement pdfToImages rendering per page; build multi-file upload panel with progress and errors; integrate with parent state.",
+        "updatedAt": "2025-11-15T14:34:02.839Z"
       },
       {
         "id": "6",
@@ -784,9 +785,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2025-11-15T14:03:21.525Z",
+      "lastModified": "2025-11-15T14:34:02.840Z",
       "taskCount": 10,
-      "completedCount": 4,
+      "completedCount": 5,
       "tags": [
         "master"
       ]
