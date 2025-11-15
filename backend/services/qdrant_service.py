@@ -10,7 +10,7 @@ class QdrantService:
             url=QDRANT_URL,
             api_key=QDRANT_API_KEY
         )
-    def get_uuid():
+    def get_uuid(self):
         return str(uuid.uuid4())
     def create_collection(self, name, vector_size=1024):
         return self.client.recreate_collection(

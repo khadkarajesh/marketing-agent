@@ -3,7 +3,6 @@ from config import MISTRAL_API_KEY
 
 class MistralClient:
     def __init__(self):
-        print(MISTRAL_API_KEY)
         self.client = Mistral(api_key = MISTRAL_API_KEY)
 
     def get_embedding(self, text, model="mistral-embed"):
@@ -19,8 +18,8 @@ class MistralClient:
             messages=[
                 {
                     "role": "user",
-                    "content": prompt
-                }
+                    "content": prompt,
+                },
             ]
         )
-        return response.choices[0].message["content"]
+        return response.choices[0].message.content

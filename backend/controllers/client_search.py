@@ -1,8 +1,10 @@
 from flask import Blueprint, request, jsonify
 from services.mistral import MistralClient
 from services.qdrant_service import QdrantService
+from qdrant_client import models
 from config import SEARCH_PROMPT, PERS_MSG_PROMPT
 from controllers import utils
+from tqdm import tqdm
 
 cl_search_bp = Blueprint("client_search", __name__)
 qdrant = QdrantService()
@@ -10,11 +12,8 @@ mistral = MistralClient()
 
 @cl_search_bp.route("/", methods=["POST"])
 def proceed_client_search():
-
     try:
-
-        payload = request.json.get("payload")
-
+        payload = request.get_json()
         ## parsing payload
         prod_name = payload.get("productName")
         if not prod_name:
@@ -22,52 +21,62 @@ def proceed_client_search():
         ques_answ = utils.split_conversation_into_pairs(payload.get("conversationTranscript"))
         ques_answ.append("productHint : " + payload.get("conversationProblemHint"))
         ques_answ.append("productSolution : " + payload.get("conversationSolutionHint"))
-        if len(ques_answ<3):
+        ques_answ += utils.parse_pdf_slides_clean(payload.get("pdfSlidesText"))
+        if len(ques_answ)<3:
             raise Exception("Problem on parsing product information")
         
+        # print(ques_answ)
+        # return jsonify({"suc":"suc"})
         points = []
         project_desc = ""
         ## Uploading client information to our database
         qdrant.create_collection(name = prod_name)
         for info in ques_answ:
             project_desc += "\n" + info
-            pt = qdrant.models.PointStruct(
-                id = qdrant.get_uuid,
-                payload= {"content":info},
-                vector= mistral.get_embedding(info)
-            )
-            points.append(pt)
-        
-        qdrant.insert_vectors(collection_name=prod_name,points=points)
+            # pt = models.PointStruct(
+            #     id = qdrant.get_uuid(),
+            #     payload= {"content":info},
+            #     vector = mistral.get_embedding(info)
+            # )
+            # points.append(pt)
+        #qdrant.insert_vectors(collection_name=prod_name,points=points)
+
+        print("Summarizing project")
+        summary = mistral.generate(f"Summarize my project {project_desc}")
         
         ## Creating a search query
-        prompt = SEARCH_PROMPT + project_desc
+        prompt = SEARCH_PROMPT + summary
 
+        print("Creating search prompt")
         query = mistral.generate(prompt = prompt)
+        print("Generating embeddings")
         query_emb = mistral.get_embedding(text = query)
-        similar_problems = qdrant.search_vectors("problem_collection",vector = query_emb, limit=10)
+        print("Searching similar vectors")
+        similar_problems = qdrant.search_vectors("problem_collection",vector = query_emb, limit=4)
         
+        print("Creating personalized responses")
         result = []
-        for prob in similar_problems:
+        for prob in tqdm(similar_problems,leave=True):
             score = prob.score
-            payload = prob.get("payload")
-            user_id = payload.get("reddit_id")
-            text = payload.get("text")
-            title = payload.get("title")
-            subreddit = payload.get("subreddit")
-            url = payload.get("url")
+            payload = prob.payload
+            user_id = payload["reddit_id"]
+            text = payload["text"]
+            title = payload["title"]
+            subreddit = payload["subreddit"]
+            url = payload["url"]
 
             prob_desc = f"url:{url}, title : {title}, problem : {text}"
 
-            message = mistral.generate(PERS_MSG_PROMPT + f"Inputs: PROBLEM_DESCRIPTION: {prob_desc} SOLUTION_DESCRIPTION: {project_desc}")
+            message = mistral.generate(PERS_MSG_PROMPT + f"Inputs: PROBLEM_DESCRIPTION: {prob_desc} SOLUTION_DESCRIPTION: {summary}")
 
             res = {
                 "problem":{
+                    "similarity_score":score,
                     "title":title,
                     "subreddit":subreddit,
                     "user_id":user_id,
                     "url":url,
-                    "summary": mistral.generate(f"Summarize the users problem:{title + "\n" + text}")
+                    "summary":payload.get("conversationProblemHint")
                 },
                 "marketing":message
             }
@@ -77,5 +86,6 @@ def proceed_client_search():
 
         return jsonify(result)
     except Exception as er:
-        return jsonify({"Problem":er})
+        print(er)
+        return jsonify({"Problem":str(er)})
     
