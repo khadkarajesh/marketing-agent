@@ -13,7 +13,7 @@ source .venv/bin/activate
 ```
 3. Run flask Application
 ```shell
-   command to run flask application
+   python server.py
 ```
 
 ### Run Frontend Application
