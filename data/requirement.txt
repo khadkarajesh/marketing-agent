@@ -1,0 +1,4 @@
+praw==7.8.1
+qdrant-client==1.15.1
+mistralai==1.9.11
+python-dotenv==1.2.1
