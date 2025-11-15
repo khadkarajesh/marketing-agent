@@ -1,34 +1,25 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import VoiceAgentPanel from './components/VoiceAgentPanel'
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <main className="min-h-screen bg-slate-950 text-white">
+      <div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-10 sm:px-8">
+        <header className="space-y-2">
+          <p className="text-sm uppercase tracking-[0.35em] text-emerald-300/80">Client Search</p>
+          <h1 className="text-4xl font-semibold text-white">
+            Marketing agent prototype: voice + PDF insights.
+          </h1>
+          <p className="max-w-3xl text-base text-slate-400">
+            Interview founders via ElevenLabs, capture their problem and solution, and prepare the
+            payload for the Client Search backend. Upload PDFs next to blend doc intelligence with
+            the live conversation.
+          </p>
+        </header>
+
+        <VoiceAgentPanel />
+        {/* Upcoming sections for PDF upload and Client Search payload preview will attach below. */}
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    </main>
   )
 }
 
