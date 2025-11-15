@@ -18,10 +18,26 @@ def proceed_client_search():
         prod_name = payload.get("productName")
         if not prod_name:
             raise Exception("Product name is not mentioned!")
-        ques_answ = utils.split_conversation_into_pairs(payload.get("conversationTranscript"))
-        ques_answ.append("productHint : " + payload.get("conversationProblemHint"))
-        ques_answ.append("productSolution : " + payload.get("conversationSolutionHint"))
-        ques_answ += utils.parse_pdf_slides_clean(payload.get("pdfSlidesText"))
+        conversation_transcript = payload.get("conversationTranscript", "")
+        if not isinstance(conversation_transcript, str):
+            conversation_transcript = str(conversation_transcript) if conversation_transcript else ""
+        ques_answ = utils.split_conversation_into_pairs(conversation_transcript)
+        problem_hint = payload.get("conversationProblemHint")
+        if problem_hint:
+            ques_answ.append("productHint : " + str(problem_hint))
+        solution_hint = payload.get("conversationSolutionHint")
+        if solution_hint:
+            ques_answ.append("productSolution : " + str(solution_hint))
+        pdf_slides = payload.get("pdfSlidesText", [])
+        if pdf_slides and isinstance(pdf_slides, list):
+            # Convert PdfPageText objects to strings if needed
+            pdf_strings = []
+            for slide in pdf_slides:
+                if isinstance(slide, dict) and 'text' in slide:
+                    pdf_strings.append(f"Page {slide.get('pageNumber', '?')} ({slide.get('filename', 'unknown')}):\n{slide['text']}")
+                elif isinstance(slide, str):
+                    pdf_strings.append(slide)
+            ques_answ += utils.parse_pdf_slides_clean(pdf_strings)
         if len(ques_answ)<3:
             raise Exception("Problem on parsing product information")
         

@@ -18,6 +18,7 @@ export interface ClientSearchPayload {
   productName: string
   conversationSolutionHint?: string
   pdfPages: PdfPageText[]
+  pdfSlidesText?: PdfPageText[] // Backend expects this field
 }
 
 export interface ProcessedCompanyData {

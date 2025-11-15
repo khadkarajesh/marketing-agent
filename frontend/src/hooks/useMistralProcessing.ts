@@ -154,6 +154,7 @@ Do not include any other text, explanations, or markdown formatting. Just the JS
       conversationSolutionHint: processedData?.solution,
       productName: productName || 'Unknown Product',
       pdfPages: pdfPages,
+      pdfSlidesText: pdfPages, // Backend expects this field name
     }
   }, [])
 

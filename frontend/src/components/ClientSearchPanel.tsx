@@ -123,6 +123,7 @@ export function ClientSearchPanel({ transcript, pdfPages, productName, onPayload
 
         const result = await response.json()
         console.log('✅ Real backend response:', result)
+        setMockResponse(result)
         setSuccess(true)
       }
     } catch (err) {
