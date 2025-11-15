@@ -1,0 +1,5 @@
+dotenv==0.9.9
+Flask==3.1.2
+mistralai==1.9.11
+qdrant-client==1.15.1
+tqdm==4.67.1
