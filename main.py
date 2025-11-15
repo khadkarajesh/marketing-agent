@@ -44,16 +44,7 @@ META_DATA = {
     },
 }
 
-# SUBREDDITS = ["learnprogramming", "coding", "devops", "softwareengineering"]
-# KEYWORDS = ["problem", "stuck", "help", "issue", "error"]
-
-
-# SUBREDDITS = ["French", "LearnFrench", "Language", "languagelearning"]
-# KEYWORDS = ["bad", "terrible", "awful", "horrible", "useless", "worst", "broken", "bug","crash", "slow", "lag", "frustrating", "annoying", "hate", "disappointed", "duolingo", "anki", "app", "youtube"]
-
-SUBREDDITS = ["mentalhealth" , "breakups", "trauma"]
-KEYWORDS = ["suicide", "die", "unwell" "narcissism", "sober", "divorce"]
-LIMIT = 50  # posts per subreddit
+LIMIT = 500  # posts per subreddit
 
 EMBED_MODEL = "mistral-embed"
 EMBED_DIM = 1024  # required by qdrant for mistral embedding size
@@ -94,16 +85,39 @@ def fetch_posts(subreddits, keywords):
 
 def embed_posts(posts):
 
-    content = [
-        f"{p['title']} \n\n{p['text']}" for p in posts
-    ]
+    if not posts:
+        return []
 
-    response = mistral.embeddings.create(
-        model=EMBED_MODEL,
-        inputs=content
-    )
+    content = [f"{p['title']} \n\n{p['text']}" for p in posts]
 
-    return [d.embedding for d in response.data]
+    # Mistral embed models have a max context (tokens) limit; estimate tokens from characters
+    # Use a conservative chars-per-token estimate to avoid exceeding the token limit.
+    MAX_TOKENS = 8192
+    CHARS_PER_TOKEN = 4
+    MAX_CHARS = MAX_TOKENS * CHARS_PER_TOKEN
+
+    truncated_content = []
+    truncated_count = 0
+    for c in content:
+        if len(c) > MAX_CHARS:
+            truncated_content.append(c[:MAX_CHARS])
+            truncated_count += 1
+        else:
+            truncated_content.append(c)
+    if truncated_count:
+        print(
+            f"✂️ Truncated {truncated_count} inputs to {MAX_CHARS} characters to fit token limits."
+        )
+
+    # Split inputs into smaller batches to avoid "Too many tokens overall" errors.
+    BATCH_SIZE = 8  # reduce if you still hit token limits
+    embeddings = []
+    for i in range(0, len(truncated_content), BATCH_SIZE):
+        batch = truncated_content[i : i + BATCH_SIZE]
+        response = mistral.embeddings.create(model=EMBED_MODEL, inputs=batch)
+        embeddings.extend([d.embedding for d in response.data])
+
+    return embeddings
 
 
 def store_in_qdrant(posts, embeddings):
