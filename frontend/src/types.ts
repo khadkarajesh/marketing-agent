@@ -19,3 +19,14 @@ export interface ClientSearchPayload {
   conversationSolutionHint?: string
   pdfPages: PdfPageText[]
 }
+
+export interface ProcessedCompanyData {
+  problem: string
+  solution: string
+  formattedTranscript: string
+}
+
+export interface MistralProcessingRequest {
+  transcript: string
+  pdfContent: PdfPageText[]
+}

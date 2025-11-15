@@ -158,6 +158,8 @@ export const useElevenLabsConversation = (
     (rawEvent: MessageEvent<string>) => {
       try {
         const data: ElevenLabsEvent = JSON.parse(rawEvent.data)
+        console.log('📥 ElevenLabs event received:', data.type, data)
+
         if (isPingEvent(data)) {
           setTimeout(() => {
             sendJson({
@@ -170,8 +172,13 @@ export const useElevenLabsConversation = (
 
         if (isUserTranscriptEvent(data)) {
           const transcript = data.user_transcription_event.user_transcript
-          appendTurn(setTurns, 'user', transcript, { replaceLast: true })
-          callbacksRef.current?.onUserTranscriptUpdate?.(transcript)
+          console.log('🗣️ User transcript received:', JSON.stringify(transcript), 'length:', transcript.length)
+
+          // Only append non-empty transcripts to avoid "..." placeholder issues
+          if (transcript && transcript.trim() && transcript !== '...') {
+            appendTurn(setTurns, 'user', transcript, { replaceLast: true })
+            callbacksRef.current?.onUserTranscriptUpdate?.(transcript)
+          }
           return
         }
 
@@ -206,14 +213,35 @@ export const useElevenLabsConversation = (
         throw new Error('MediaRecorder API is unavailable in this browser.')
       }
 
-      const recorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus',
-      })
+      console.log('🎤 Starting MediaRecorder with stream:', stream.getAudioTracks().length, 'audio tracks')
+
+      // Check supported MIME types
+      const preferredTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/wav'
+      ]
+
+      let selectedType = ''
+      for (const type of preferredTypes) {
+        if (MediaRecorder.isTypeSupported(type)) {
+          selectedType = type
+          console.log('🎤 Using MIME type:', selectedType)
+          break
+        }
+      }
+
+      const recorder = new MediaRecorder(stream, selectedType ? { mimeType: selectedType } : {})
+
+      console.log('🎤 MediaRecorder created, state:', recorder.state)
 
       recorder.addEventListener('dataavailable', async (event) => {
+        console.log('🎤 Audio data available, size:', event.data.size, 'bytes')
         if (!event.data.size) return
         try {
           const audioChunk = await blobToBase64(event.data)
+          console.log('📤 Sending audio chunk to ElevenLabs, length:', audioChunk.length)
           sendJson({
             user_audio_chunk: audioChunk,
           })
@@ -230,6 +258,7 @@ export const useElevenLabsConversation = (
       })
 
       recorder.start(500)
+      console.log('🎤 MediaRecorder started, recording every 500ms')
       mediaRecorderRef.current = recorder
     },
     [resetSessionState, sendJson],
@@ -254,24 +283,15 @@ export const useElevenLabsConversation = (
   }, [])
 
   const sendConversationInit = useCallback(() => {
-    const conversationConfig =
-      ELEVENLABS_AGENT_PROMPT.trim().length > 0
-        ? {
-            conversation_config_override: {
-              agent: {
-                prompt: {
-                  prompt: ELEVENLABS_AGENT_PROMPT,
-                },
-              },
-            },
-          }
-        : undefined
-
-    sendJson({
+    // Note: Prompt override disabled because this agent doesn't allow prompt overrides
+    // The agent should already be configured with the startup discovery prompt
+    const initPayload = {
       type: 'conversation_initiation_client_data',
-      ...conversationConfig,
       user_id: crypto.randomUUID?.() ?? undefined,
-    })
+    }
+
+    console.log('📤 Sending conversation init (no prompt override):', initPayload)
+    sendJson(initPayload)
   }, [sendJson])
 
   const startSession = useCallback(
@@ -289,10 +309,13 @@ export const useElevenLabsConversation = (
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
         mediaStreamRef.current = stream
 
-        const websocket = new WebSocket(buildWebSocketUrl(startOptions?.signedUrl))
+        const wsUrl = buildWebSocketUrl(startOptions?.signedUrl)
+        console.log('🔗 Connecting to ElevenLabs WebSocket:', wsUrl)
+        const websocket = new WebSocket(wsUrl)
         websocketRef.current = websocket
 
         websocket.addEventListener('open', () => {
+          console.log('✅ ElevenLabs WebSocket connected')
           setIsActive(true)
           sendConversationInit()
           startMediaRecorder(stream)
@@ -300,12 +323,13 @@ export const useElevenLabsConversation = (
 
         websocket.addEventListener('message', handleIncomingEvent)
 
-        websocket.addEventListener('close', () => {
+        websocket.addEventListener('close', (closeEvent) => {
+          console.log('🔌 ElevenLabs WebSocket closed:', closeEvent.code, closeEvent.reason)
           resetSessionState()
         })
 
         websocket.addEventListener('error', (wsError) => {
-          console.error('ElevenLabs WebSocket error', wsError)
+          console.error('❌ ElevenLabs WebSocket error', wsError)
           setError('ElevenLabs connection error. Please retry.')
           resetSessionState()
         })
