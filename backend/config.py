@@ -14,3 +14,5 @@ MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
 
 with open("./controllers/search_prompt.txt","r") as file:
     SEARCH_PROMPT = file.read()
+with open("./controllets/pers_msg_prompt.txt","r") as file:
+    PERS_MSG_PROMPT = file.read()
