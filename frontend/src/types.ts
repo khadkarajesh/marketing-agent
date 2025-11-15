@@ -30,3 +30,17 @@ export interface MistralProcessingRequest {
   transcript: string
   pdfContent: PdfPageText[]
 }
+
+export interface RedditOpportunity {
+  problem: {
+    similarity_score: number
+    title: string
+    subreddit: string
+    user_id: string
+    url: string
+    summary: string
+  }
+  marketing: string
+}
+
+export type MockResponse = RedditOpportunity[]
